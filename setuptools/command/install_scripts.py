@@ -37,6 +37,13 @@ class install_scripts(orig.install_scripts):
         if is_wininst:
             exec_param = "python.exe"
             writer = ei.WindowsScriptWriter
+        if exec_param is not None:
+            # exec_param is fetched from the build_scripts --executable
+            # argument, or sys.executable if that argument is not specified.
+            # Since that path may contain spaces, wrapping it in a
+            # single-element list ensures that it is quoted correctly in that
+            # case.
+            exec_param = [exec_param]
         # resolve the writer to the environment
         writer = writer.best()
         cmd = writer.command_spec_class.best().from_param(exec_param)
