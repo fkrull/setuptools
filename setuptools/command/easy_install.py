@@ -1987,7 +1987,7 @@ class CommandSpec(list):
 
     @staticmethod
     def _render(items):
-        cmdline = subprocess.list2cmdline(items)
+        cmdline = ' '.join(items)
         return '#!' + cmdline + '\n'
 
 # For pbr compat; will be removed in a future version.
@@ -1996,6 +1996,20 @@ sys_executable = CommandSpec._sys_executable()
 
 class WindowsCommandSpec(CommandSpec):
     split_args = dict(posix=False)
+
+    @staticmethod
+    def _strip_quotes(item):
+        _QUOTES = '"\''
+        for q in _QUOTES:
+            if item.startswith(q) and item.endswith(q):
+                return item[1:-1]
+        return item
+
+    @staticmethod
+    def _render(items):
+        cmdline = subprocess.list2cmdline(
+            WindowsCommandSpec._strip_quotes(item.strip()) for item in items)
+        return '#!' + cmdline + '\n'
 
 
 class ScriptWriter(object):
