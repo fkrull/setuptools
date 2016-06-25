@@ -534,16 +534,16 @@ def make_trivial_sdist(dist_path, setup_py):
 )
 class TestScriptHeader:
     non_ascii_exe = '/Users/José/bin/python'
-    exe_with_spaces = r'C:\Program Files\Python33\python.exe'
+    exe_with_spaces = '/usr/bin/env python'
+    win32_exe_with_spaces = r'C:\Program Files\Python 3.3\python.exe'
 
     def test_get_script_header(self):
-        expected = '#!%s\n' % ei.nt_quote_arg(os.path.normpath(sys.executable))
+        expected = '#!%s\n' % os.path.normpath(sys.executable)
         actual = ei.ScriptWriter.get_script_header('#!/usr/local/bin/python')
         assert actual == expected
 
     def test_get_script_header_args(self):
-        expected = '#!%s -x\n' % ei.nt_quote_arg(
-            os.path.normpath(sys.executable))
+        expected = '#!%s -x\n' % os.path.normpath(sys.executable)
         actual = ei.ScriptWriter.get_script_header('#!/usr/bin/python -x')
         assert actual == expected
 
@@ -555,10 +555,37 @@ class TestScriptHeader:
         assert actual == expected
 
     def test_get_script_header_exe_with_spaces(self):
-        expected = '#!"%s"\n' % self.exe_with_spaces
+        expected = '#!%s\n' % self.exe_with_spaces
         actual = ei.ScriptWriter.get_script_header(
             '#!/usr/bin/python',
             executable='"' + self.exe_with_spaces + '"')
+        assert actual == expected
+
+    def test_get_script_header_WindowsScriptWriter(self):
+        expected = '#!%s\n' % ei.nt_quote_arg(os.path.normpath(sys.executable))
+        actual = ei.WindowsScriptWriter.get_script_header(
+            '#!/usr/local/bin/python')
+        assert actual == expected
+
+    def test_get_script_header_args_WindowsScriptWriter(self):
+        expected = '#!%s -x\n' % ei.nt_quote_arg(
+            os.path.normpath(sys.executable))
+        actual = ei.WindowsScriptWriter.get_script_header(
+            '#!/usr/bin/python -x')
+        assert actual == expected
+
+    def test_get_script_header_non_ascii_exe_WindowsScriptWriter(self):
+        expected = '#!%s -x\n' % self.non_ascii_exe
+        actual = ei.WindowsScriptWriter.get_script_header(
+            '#!/usr/bin/python',
+            executable=self.non_ascii_exe)
+        assert actual == expected
+
+    def test_get_script_header_exe_with_spaces_WindowsScriptWriter(self):
+        expected = '#!"%s"\n' % self.win32_exe_with_spaces
+        actual = ei.WindowsScriptWriter.get_script_header(
+            '#!/usr/bin/python',
+            executable='"' + self.win32_exe_with_spaces + '"')
         assert actual == expected
 
 
@@ -584,6 +611,16 @@ class TestCommandSpec:
     def test_from_environment_with_spaces_in_executable(self):
         os.environ.pop('__PYVENV_LAUNCHER__', None)
         cmd = ei.CommandSpec.from_environment()
+        assert len(cmd) == 1
+        assert cmd.as_header().startswith('#!')
+        assert not cmd.as_header().startswith('#!"')
+
+    @mock.patch('sys.executable', TestScriptHeader.win32_exe_with_spaces)
+    @mock.patch.dict(os.environ)
+    def test_from_environment_with_spaces_in_executable_WindowsCommandSpec(
+            self):
+        os.environ.pop('__PYVENV_LAUNCHER__', None)
+        cmd = ei.WindowsCommandSpec.from_environment()
         assert len(cmd) == 1
         assert cmd.as_header().startswith('#!"')
 
